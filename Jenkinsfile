@@ -11,21 +11,20 @@ pipeline {
         AWS_CREDENTIALS_ID = 'aws-eks-jenkins'
         EKS_TOOL_IMAGE = 'dtzar/helm-kubectl:latest'
 
-        IMAGE_NAME = 'o2ppo/freebrback001'
-        AI_IMAGE_NAME = 'o2ppo/freebridge-ai'
-        DOCKER_CRED_ID = 'dockerhub-credentials'
-        DOCKER_BUILDKIT = '0'
-
-        DOCKER_CLIENT_TIMEOUT = '3000'
-        COMPOSE_HTTP_TIMEOUT = '3000'
-
+        CRED_ID_FE = 'github-fe-key'
         CRED_ID_MANIFEST = 'github-manifest-key'
         MANIFEST_REPO_URL = 'git@github.com:20250918-beyond-SW-Camp-21th/beyond-SW-21th-Final-4team-Manifest-file.git'
+        MANIFEST_BRANCH = 'main'
+
+        IMAGE_NAME = 'o2ppo/freebrfront001'
+        DOCKER_CRED_ID = 'dockerhub-credentials'
         GIT_EMAIL = 'lmjayoul@gmail.com'
+        FRONTEND_API_BASE_URL = ''
     }
 
     stages {
         stage('EKS Preflight') {
+
             steps {
                 script {
                     withCredentials([[
@@ -37,6 +36,7 @@ pipeline {
                         sh """
                             set -euxo pipefail
                             export AWS_DEFAULT_REGION=${env.AWS_REGION}
+
                             if ! command -v aws > /dev/null 2>&1; then
                                 echo 'aws CLI is not installed.'
                                 exit 1
@@ -55,52 +55,51 @@ pipeline {
             }
         }
 
-        stage('Checkout & Gradle Build') {
+        stage('Checkout Code') {
             steps {
                 cleanWs()
                 checkout scm
+                echo 'Source Code Checkout Complete'
+            }
+        }
 
-                sh 'chmod +x freebridge/gradlew'
-                sh 'cd freebridge && ./gradlew clean bootJar -x test'
-
+        stage('Setup & Check') {
+            steps {
                 script {
                     env.GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.IMAGE_TAG = "${currentBuild.number}-${env.GIT_COMMIT_HASH}"
-                    echo "Build Tag 생성 완료: ${env.IMAGE_TAG}"
+
+                    def rawBranch = env.BRANCH_NAME ?: (env.GIT_BRANCH ?: 'main')
+                    env.TARGET_BRANCH = rawBranch.replace('origin/', '')
+
+                    echo "Build Tag: ${env.IMAGE_TAG}"
+                    echo "Target Branch: ${env.TARGET_BRANCH}"
                 }
             }
         }
 
-        stage('Docker Build') {
-            steps {
-                script {
-                    echo 'BuildKit을 활성화하여 빌드를 시작합니다.'
-
-                    sh "DOCKER_BUILDKIT=${env.DOCKER_BUILDKIT} docker build --build-arg APP_JAR=freebridge/app-main/build/libs/app-main-0.0.1-SNAPSHOT.jar -t ${env.IMAGE_NAME}:${env.IMAGE_TAG} ."
-
-                    echo 'Python AI Docker Image 빌드를 시작합니다.'
-                    sh "cd freebridge-ai && DOCKER_BUILDKIT=${env.DOCKER_BUILDKIT} docker build -t ${env.AI_IMAGE_NAME}:${env.IMAGE_TAG} ."
-                }
-            }
-        }
-
-        stage('Push Image to Docker Hub') {
+        stage('Build & Push') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${env.DOCKER_CRED_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        echo "Docker Login 및 Push 시도 중: ${env.IMAGE_TAG}..."
-                        sh """
+                        sh '''
                             set -eux
-                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
 
-                            docker push ${env.IMAGE_NAME}:${env.IMAGE_TAG}
-                            docker tag ${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.IMAGE_NAME}:latest
-                            docker push ${env.IMAGE_NAME}:latest
+                            which docker || true
+                            docker version
+                            docker buildx version || true
 
-                            docker push ${env.AI_IMAGE_NAME}:${env.IMAGE_TAG}
-                            docker tag ${env.AI_IMAGE_NAME}:${env.IMAGE_TAG} ${env.AI_IMAGE_NAME}:latest
-                            docker push ${env.AI_IMAGE_NAME}:latest
-                        """
+                            export DOCKER_BUILDKIT=0
+                            docker build \
+                              --build-arg VITE_API_BASE_URL="${FRONTEND_API_BASE_URL:-}" \
+                              -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+
+                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                            docker push ${IMAGE_NAME}:latest
+                        '''
                     }
                 }
             }
@@ -114,35 +113,37 @@ pipeline {
                             set -eux
                             mkdir -p ~/.ssh
                             ssh-keyscan github.com >> ~/.ssh/known_hosts
+
                             rm -rf manifest-repo
                             git clone ${env.MANIFEST_REPO_URL} manifest-repo
 
                             cd manifest-repo
-                            git config user.name "Jenkins Backend Bot"
+                            git config user.name "Jenkins Frontend Bot"
                             git config user.email "${env.GIT_EMAIL}"
 
-                            test -f kube-folder/backend-deployment.yml
-                            test -f kube-folder/backend-service.yml
-                            test -f kube-folder/python-ai-deployment.yml
-                            test -f kube-folder/python-ai-service.yml
+                            test -f kube-folder/frontend-deployment.yml
+                            test -f kube-folder/frontend-service.yml
+                            test -f kube-folder/ingress-set.yml
 
-                            sed -i "s|image: ${env.IMAGE_NAME}:.*|image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}|g" kube-folder/backend-deployment.yml
-                            sed -i "s|image: ${env.AI_IMAGE_NAME}:.*|image: ${env.AI_IMAGE_NAME}:${env.IMAGE_TAG}|g" kube-folder/python-ai-deployment.yml
+                            sed -i 's|image: ${env.IMAGE_NAME}:.*|image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}|g' kube-folder/frontend-deployment.yml
+                            grep 'image:' kube-folder/frontend-deployment.yml
 
                             git add .
                             if ! git diff --cached --quiet; then
-                                git commit -m "[Jenkins] Update backend & AI image to ${env.IMAGE_TAG}"
-                                git push origin main
-                                echo 'Manifest Repo 업데이트 완료'
+                                git commit -m "[Jenkins] Update image to ${env.IMAGE_TAG}"
+                                git push origin ${env.MANIFEST_BRANCH}
+                                echo 'Manifest Repo Updated!'
                             else
-                                echo '변경 사항이 없습니다.'
+                                echo 'No changes to push.'
                             fi
                         """
                     }
                 }
             }
         }
-        stage('Install Ingress Nginx If Missing') {
+
+        stage('Deploy Frontend and Ingress') {
+
             steps {
                 script {
                     withCredentials([[
@@ -154,54 +155,7 @@ pipeline {
                         sh """
                             set -euxo pipefail
                             export AWS_DEFAULT_REGION=${env.AWS_REGION}
-                            if ! command -v aws > /dev/null 2>&1; then
-                                echo 'aws CLI is not installed.'
-                                exit 1
-                            fi
-                            if ! command -v helm > /dev/null 2>&1; then
-                                echo 'helm is not installed.'
-                                exit 1
-                            fi
 
-                            aws eks update-kubeconfig --region ${env.AWS_REGION} --name ${env.EKS_CLUSTER_NAME}
-
-                            if kubectl get ingressclass nginx >/dev/null 2>&1; then
-                                echo 'ingress-nginx is already installed. Skipping.'
-                                exit 0
-                            fi
-
-                            kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
-                            helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
-                            helm repo update
-
-                            helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-                              --namespace ingress-nginx \
-                              --set controller.service.type=LoadBalancer \
-                              --set controller.ingressClassResource.name=nginx \
-                              --set controller.ingressClass=nginx \
-                              --set controller.ingressClassResource.default=true
-
-                            kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=300s
-                            kubectl get svc -n ingress-nginx
-                            kubectl get ingressclass
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to EKS') {
-            steps {
-                script {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: "${env.AWS_CREDENTIALS_ID}",
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                    ]]) {
-                        sh """
-                            set -euxo pipefail
-                            export AWS_DEFAULT_REGION=${env.AWS_REGION}
                             if ! command -v aws > /dev/null 2>&1; then
                                 echo 'aws CLI is not installed.'
                                 exit 1
@@ -210,30 +164,24 @@ pipeline {
                             aws eks update-kubeconfig --region ${env.AWS_REGION} --name ${env.EKS_CLUSTER_NAME}
                             cd manifest-repo
 
-                            kubectl apply -f kube-folder/backend-secret.yml
-                            kubectl apply -f kube-folder/backend-deployment.yml
-                            kubectl apply -f kube-folder/backend-service.yml
+                            test -f kube-folder/frontend-deployment.yml
+                            test -f kube-folder/frontend-service.yml
+                            test -f kube-folder/ingress-set.yml
 
-                            kubectl apply -f kube-folder/python-ai-configmap.yml
-                            kubectl apply -f kube-folder/python-ai-secret.yml
-                            kubectl apply -f kube-folder/python-ai-deployment.yml
-                            kubectl apply -f kube-folder/python-ai-service.yml
+                            kubectl apply -f kube-folder/frontend-deployment.yml
+                            kubectl apply -f kube-folder/frontend-service.yml
+                            
+                            # 기존 frontend-ingress가 남아있다면 충돌 방지를 위해 삭제
+                            kubectl delete ingress frontend-ingress --ignore-not-found=true || true
+                            
+                            kubectl apply -f kube-folder/ingress-set.yml
 
-                            if ! kubectl rollout status deployment/backend --timeout=600s; then
-                                kubectl get pods -o wide
-                                kubectl get rs -l app=backend
-                                kubectl describe deployment/backend
-                                kubectl describe pods -l app=backend
-                                exit 1
-                            fi
+                            kubectl rollout restart deployment/frontend
+                            kubectl rollout status deployment/frontend --timeout=180s
 
-                            if ! kubectl rollout status deployment/python-ai-service --timeout=600s; then
-                                kubectl get pods -o wide
-                                kubectl get rs -l app=python-ai-service
-                                kubectl describe deployment/python-ai-service
-                                kubectl describe pods -l app=python-ai-service
-                                exit 1
-                            fi
+                            kubectl get svc frontend-service
+                            kubectl get ingress ingress-set
+                            kubectl describe ingress ingress-set || true
                         """
                     }
                 }
@@ -244,46 +192,36 @@ pipeline {
     post {
         always {
             sh 'docker logout || true'
-            sh "docker rmi ${env.IMAGE_NAME}:${env.IMAGE_TAG} || true"
-            sh "docker rmi ${env.IMAGE_NAME}:latest || true"
-            sh "docker rmi ${env.AI_IMAGE_NAME}:${env.IMAGE_TAG} || true"
-            sh "docker rmi ${env.AI_IMAGE_NAME}:latest || true"
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            sh "docker rmi ${IMAGE_NAME}:latest || true"
             sh 'docker image prune -f || true'
             cleanWs()
         }
         success {
             withCredentials([string(credentialsId: 'discord', variable: 'DISCORD')]) {
-                script {
-                    try {
-                        discordSend(
-                            description: "**백엔드 및 AI 배포 성공!** :tada:\n**Tag**: ${env.IMAGE_TAG}\n**Result**: SUCCESS",
-                            result: 'SUCCESS',
-                            title: "${env.JOB_NAME} Build Success",
-                            webhookURL: "$DISCORD"
-                        )
-                    } catch (err) {
-                        echo "Discord success notification failed: ${err.message}"
-                    }
-                }
+                discordSend(
+                    description: """
+                        **배포 성공!** :tada:
+
+                        **Tag**: ${env.IMAGE_TAG}
+                        **Repo**: [Manifest Repo Link](${env.MANIFEST_REPO_URL})
+                        **Result**: SUCCESS
+                    """.stripIndent(),
+                    result: 'SUCCESS',
+                    title: "${env.JOB_NAME} Build Success",
+                    webhookURL: "$DISCORD"
+                )
             }
         }
         failure {
             withCredentials([string(credentialsId: 'discord', variable: 'DISCORD')]) {
-                script {
-                    try {
-                        discordSend(
-                            description: "**백엔드 및 AI 배포 실패** :x:\n에러 로그를 확인하세요.",
-                            result: 'FAILURE',
-                            title: "${env.JOB_NAME} Build Failed",
-                            webhookURL: "$DISCORD"
-                        )
-                    } catch (err) {
-                        echo "Discord failure notification failed: ${err.message}"
-                    }
-                }
+                discordSend(
+                    description: '**배포 실패** :x: Check Console Output',
+                    result: 'FAILURE',
+                    title: "${env.JOB_NAME} Build Failed",
+                    webhookURL: "$DISCORD"
+                )
             }
         }
     }
 }
-
-

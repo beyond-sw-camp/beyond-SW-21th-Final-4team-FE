@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --scroll-thumb-color: #cbd5e1;
+    --fb-bg: #ffffff;
+    --fb-surface: rgba(255, 255, 255, 0.86);
+    --fb-surface-strong: #ffffff;
+    --fb-border: rgba(35, 36, 42, 0.08);
+    --fb-shadow: 0 16px 40px rgba(35, 36, 42, 0.06);
+    --fb-text: #23242a;
+    --fb-text-soft: #5a6577;
+    --fb-primary: #21afbf;
+    --fb-secondary: #00d4da;
+    --fb-accent: #26c7d9;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --scroll-thumb-color: #475569;
+    }
+}
+
+.dark {
+    --scroll-thumb-color: #475569;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    /* Slightly wider for better usability */
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--scroll-thumb-color);
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+body {
+    background:
+        radial-gradient(circle at top left, rgba(33, 175, 191, 0.05), transparent 20%),
+        radial-gradient(circle at top right, rgba(0, 212, 218, 0.05), transparent 16%),
+        linear-gradient(180deg, #fbfdff 0%, #ffffff 22%, #fcfdff 100%);
+    color: var(--fb-text);
+    font-family: Inter, Pretendard, Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@layer components {
+    .fb-page-shell {
+        @apply min-h-screen;
+        background:
+            radial-gradient(circle at top left, rgba(33, 175, 191, 0.04), transparent 18%),
+            radial-gradient(circle at top right, rgba(0, 212, 218, 0.05), transparent 15%),
+            linear-gradient(180deg, #fbfdff 0%, #ffffff 20%, #fcfdff 100%);
+    }
+
+    .fb-nav-shell {
+        @apply border-b backdrop-blur-xl;
+        background: rgba(255, 255, 255, 0.94);
+        border-color: var(--fb-border);
+        box-shadow: 0 8px 24px rgba(35, 36, 42, 0.05);
+    }
+
+    .fb-card {
+        @apply rounded-3xl border;
+        background: rgba(255, 255, 255, 0.96);
+        border-color: var(--fb-border);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+    }
+
+    .fb-card-soft {
+        @apply rounded-2xl border;
+        background: var(--fb-surface-strong);
+        border-color: rgba(35, 36, 42, 0.07);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .fb-badge-soft {
+        @apply inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium;
+        background: rgba(231, 249, 251, 0.95);
+        border-color: rgba(33, 175, 191, 0.18);
+        color: #1c95a2;
+    }
+
+    .fb-panel-tint {
+        @apply rounded-2xl border;
+        background: linear-gradient(180deg, rgba(231, 249, 251, 0.8), rgba(255, 255, 255, 0.98));
+        border-color: rgba(33, 175, 191, 0.12);
+        box-shadow: 0 12px 36px rgba(33, 175, 191, 0.08);
+    }
+
+    .fb-button-primary {
+        @apply inline-flex items-center justify-center rounded-2xl px-5 py-3 font-semibold text-white transition-all;
+        background: linear-gradient(135deg, var(--fb-primary), var(--fb-secondary));
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+    }
+
+    .fb-button-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .fb-button-secondary {
+        @apply inline-flex items-center justify-center rounded-2xl px-4 py-2.5 font-medium transition-colors;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(35, 36, 42, 0.08);
+        color: var(--fb-text);
+    }
+
+    .fb-input {
+        @apply rounded-2xl border px-4 py-3 outline-none transition-colors;
+        background: rgba(255, 255, 255, 0.92);
+        border-color: rgba(35, 36, 42, 0.08);
+        color: var(--fb-text);
+    }
+
+    .fb-input::placeholder {
+        color: #94a3b8;
+    }
+
+    .fb-input:focus {
+        border-color: rgba(33, 175, 191, 0.55);
+        box-shadow: 0 0 0 4px rgba(33, 175, 191, 0.10);
+    }
+
+    .fb-modal-overlay {
+        background: rgba(35, 36, 42, 0.22);
+        backdrop-filter: blur(10px);
+    }
+
+    .fb-modal-surface {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(35, 36, 42, 0.08);
+        box-shadow: 0 28px 80px rgba(35, 36, 42, 0.16);
+        color: var(--fb-text);
+    }
+
+    .fb-modal-header {
+        background: linear-gradient(135deg, #4f8df6 0%, #33c4de 55%, #21afbf 100%) !important;
+        border-bottom-color: rgba(255, 255, 255, 0.22) !important;
+        color: #ffffff;
+    }
+
+    .fb-page-shell [class*="bg-white/5"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-white/10"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-black/20"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-black/30"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-gray-900/95"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-slate-950"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-slate-900"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-slate-800"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-[#020617]"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-[#1e293b]/50"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-[#1e293b]/60"][class*="border-white/10"],
+    .fb-page-shell [class*="bg-[#0F172A]"][class*="border-white/10"],
+    .fb-page-shell article[class*="bg-white/5"],
+    .fb-page-shell article[class*="bg-white/10"],
+    .fb-page-shell article[class*="bg-black/20"],
+    .fb-page-shell article[class*="bg-black/30"],
+    .fb-page-shell section[class*="bg-white/5"],
+    .fb-page-shell section[class*="bg-white/10"],
+    .fb-page-shell section[class*="bg-black/20"],
+    .fb-page-shell section[class*="bg-black/30"],
+    .fb-page-shell div[class*="bg-white/5"][class*="rounded"],
+    .fb-page-shell div[class*="bg-white/10"][class*="rounded"],
+    .fb-page-shell div[class*="bg-black/20"][class*="rounded"],
+    .fb-page-shell div[class*="bg-black/30"][class*="rounded"],
+    .fb-page-shell div[class*="bg-gray-900/95"][class*="rounded"],
+    .fb-page-shell div[class*="bg-slate-950"][class*="rounded"],
+    .fb-page-shell div[class*="bg-slate-900"][class*="rounded"],
+    .fb-page-shell div[class*="bg-slate-800"][class*="rounded"],
+    .fb-page-shell div[class*="bg-[#020617]"][class*="rounded"],
+    .fb-page-shell div[class*="bg-[#1e293b]/50"][class*="rounded"],
+    .fb-page-shell div[class*="bg-[#1e293b]/60"][class*="rounded"],
+    .fb-page-shell div[class*="bg-[#0F172A]"][class*="rounded"],
+    .fb-page-shell [class*="bg-[linear-gradient(135deg,rgba(255,255,255,0.10)"],
+    .fb-page-shell [class*="bg-[linear-gradient(135deg,rgba(255,255,255,0.08)"] {
+        background: rgba(255, 255, 255, 0.96) !important;
+        border-color: rgba(35, 36, 42, 0.08) !important;
+        color: var(--fb-text) !important;
+        box-shadow: 0 16px 44px rgba(35, 36, 42, 0.08);
+    }
+
+    .fb-page-shell [class*="bg-black/60"][class*="backdrop-blur"],
+    .fb-page-shell [class*="bg-black/70"][class*="backdrop-blur"],
+    .fb-page-shell [class*="bg-slate-900/95"][class*="backdrop-blur"],
+    .fb-page-shell [class*="bg-[#020617]/80"][class*="backdrop-blur"] {
+        background: rgba(35, 36, 42, 0.22) !important;
+    }
+
+    .fb-page-shell input[class*="bg-white/5"],
+    .fb-page-shell input[class*="bg-black/"],
+    .fb-page-shell input[class*="bg-slate-900"],
+    .fb-page-shell input[class*="bg-slate-800"],
+    .fb-page-shell input[class*="bg-[#1e293b]"],
+    .fb-page-shell input[class*="bg-[#0F172A]"],
+    .fb-page-shell textarea[class*="bg-white/5"],
+    .fb-page-shell textarea[class*="bg-black/"],
+    .fb-page-shell textarea[class*="bg-slate-900"],
+    .fb-page-shell textarea[class*="bg-slate-800"],
+    .fb-page-shell textarea[class*="bg-[#1e293b]"],
+    .fb-page-shell textarea[class*="bg-[#0F172A]"],
+    .fb-page-shell select[class*="bg-white/5"],
+    .fb-page-shell select[class*="bg-black/"],
+    .fb-page-shell select[class*="bg-slate-900"],
+    .fb-page-shell select[class*="bg-slate-800"],
+    .fb-page-shell select[class*="bg-[#1e293b]"],
+    .fb-page-shell select[class*="bg-[#0F172A]"] {
+        background: #ffffff !important;
+        border-color: rgba(35, 36, 42, 0.10) !important;
+        color: var(--fb-text) !important;
+        box-shadow: none !important;
+    }
+
+    .fb-page-shell input[class*="placeholder:text-white/30"]::placeholder,
+    .fb-page-shell input[class*="placeholder:text-white/40"]::placeholder,
+    .fb-page-shell input[class*="placeholder:text-white/50"]::placeholder,
+    .fb-page-shell textarea[class*="placeholder:text-white/30"]::placeholder,
+    .fb-page-shell textarea[class*="placeholder:text-white/40"]::placeholder,
+    .fb-page-shell textarea[class*="placeholder:text-white/50"]::placeholder {
+        color: #94a3b8 !important;
+    }
+
+    .fb-page-shell h1[class*="text-white"],
+    .fb-page-shell h2[class*="text-white"],
+    .fb-page-shell h3[class*="text-white"],
+    .fb-page-shell h4[class*="text-white"],
+    .fb-page-shell h5[class*="text-white"],
+    .fb-page-shell h6[class*="text-white"] {
+        color: var(--fb-text) !important;
+    }
+
+    .fb-page-shell p[class*="text-white/90"],
+    .fb-page-shell p[class*="text-white/95"],
+    .fb-page-shell p[class~="text-white"],
+    .fb-page-shell div[class*="text-white/90"],
+    .fb-page-shell div[class*="text-white/95"],
+    .fb-page-shell div[class~="text-white"],
+    .fb-page-shell span[class*="text-white/90"],
+    .fb-page-shell span[class*="text-white/95"],
+    .fb-page-shell span[class~="text-white"],
+    .fb-page-shell a[class*="text-white/90"],
+    .fb-page-shell a[class*="text-white/95"],
+    .fb-page-shell a[class~="text-white"],
+    .fb-page-shell li[class*="text-white/90"],
+    .fb-page-shell li[class*="text-white/95"],
+    .fb-page-shell li[class~="text-white"],
+    .fb-page-shell small[class*="text-white/90"],
+    .fb-page-shell small[class*="text-white/95"],
+    .fb-page-shell small[class~="text-white"] {
+        color: var(--fb-text) !important;
+    }
+
+    .fb-page-shell p[class*="text-white/60"],
+    .fb-page-shell p[class*="text-white/50"],
+    .fb-page-shell p[class*="text-white/70"],
+    .fb-page-shell p[class*="text-white/80"],
+    .fb-page-shell p[class*="text-white/40"],
+    .fb-page-shell div[class*="text-white/60"],
+    .fb-page-shell div[class*="text-white/50"],
+    .fb-page-shell div[class*="text-white/70"],
+    .fb-page-shell div[class*="text-white/80"],
+    .fb-page-shell div[class*="text-white/40"],
+    .fb-page-shell span[class*="text-white/40"],
+    .fb-page-shell span[class*="text-white/50"],
+    .fb-page-shell span[class*="text-white/60"],
+    .fb-page-shell span[class*="text-white/70"],
+    .fb-page-shell span[class*="text-white/80"],
+    .fb-page-shell a[class*="text-white/40"],
+    .fb-page-shell a[class*="text-white/50"],
+    .fb-page-shell a[class*="text-white/60"],
+    .fb-page-shell a[class*="text-white/70"],
+    .fb-page-shell a[class*="text-white/80"],
+    .fb-page-shell label[class*="text-white/80"],
+    .fb-page-shell label[class*="text-white/70"],
+    .fb-page-shell label[class*="text-white/60"],
+    .fb-page-shell li[class*="text-white/40"],
+    .fb-page-shell li[class*="text-white/50"],
+    .fb-page-shell li[class*="text-white/60"],
+    .fb-page-shell li[class*="text-white/70"],
+    .fb-page-shell li[class*="text-white/80"],
+    .fb-page-shell small[class*="text-white/40"],
+    .fb-page-shell small[class*="text-white/50"],
+    .fb-page-shell small[class*="text-white/60"],
+    .fb-page-shell small[class*="text-white/70"],
+    .fb-page-shell small[class*="text-white/80"] {
+        color: var(--fb-text-soft) !important;
+    }
+
+    .fb-page-shell svg[class*="text-white/40"],
+    .fb-page-shell svg[class*="text-white/50"],
+    .fb-page-shell svg[class*="text-white/60"],
+    .fb-page-shell svg[class*="text-white/70"] {
+        color: #94a3b8 !important;
+    }
+
+    .fb-page-shell [class*="border-t"][class*="border-white/10"],
+    .fb-page-shell [class*="border-b"][class*="border-white/10"],
+    .fb-page-shell [class*="border-l"][class*="border-white/10"],
+    .fb-page-shell [class*="border-r"][class*="border-white/10"] {
+        border-color: rgba(35, 36, 42, 0.08) !important;
+    }
+}

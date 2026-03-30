@@ -1,15 +1,27 @@
-FROM eclipse-temurin:21-jre-alpine
+# Build stage
+FROM node:18-alpine as build-stage
 WORKDIR /app
+ARG VITE_API_BASE_URL=""
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+COPY freebridgefe/package*.json ./
+RUN npm install
+COPY freebridgefe/ .
+RUN npx vite build
 
-# 1. 사용자 생성을 먼저 해서 레이어를 고정 (변하지 않는 부분)
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Production stage
+FROM nginx:stable-alpine as production-stage
+COPY --from=build-stage /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 2. JAR 복사 (이 부분이 자주 변함)
-ARG APP_JAR=freebridge/app-main/build/libs/app-main-0.0.1-SNAPSHOT.jar
-COPY ${APP_JAR} app.jar
+# Support running as non-root
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
 
-# 3. 권한 설정
-RUN chown appuser:appgroup app.jar
-
-USER appuser
-ENTRYPOINT ["java", "-jar", "app.jar"]
+USER nginx
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]
